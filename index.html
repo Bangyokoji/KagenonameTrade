@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kage Noname - Hybrid Trading Terminal</title>
+    <!-- Font & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Lightweight Charts -->
+    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(145deg, #0a0c15 0%, #141b26 100%);
+            color: #e5e9f0;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        .logo {
+            font-size: 2rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #fff, #e6b466);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .badge {
+            background: #e6b46620;
+            border: 1px solid #e6b466;
+            border-radius: 40px;
+            padding: 8px 20px;
+            color: #e6b466;
+            font-weight: 600;
+        }
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 25px;
+            border-bottom: 1px solid #2a384a;
+            padding-bottom: 10px;
+        }
+        .tab {
+            padding: 12px 30px;
+            background: transparent;
+            border: none;
+            color: #b0c0d0;
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: 40px 40px 0 0;
+            transition: 0.3s;
+        }
+        .tab.active {
+            background: #e6b46620;
+            color: #e6b466;
+            border-bottom: 3px solid #e6b466;
+        }
+        /* Cards */
+        .card {
+            background: rgba(18, 28, 40, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid #e6b46630;
+            border-radius: 32px;
+            padding: 24px;
+            margin-bottom: 25px;
+        }
+        .card-title {
+            font-size: 1.4rem;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #e6b466;
+        }
+        /* Form elements */
+        select, input, textarea {
+            width: 100%;
+            padding: 14px 18px;
+            background: #1e2a3a;
+            border: 1px solid #3a4a5a;
+            border-radius: 24px;
+            color: white;
+            font-size: 1rem;
+            margin-bottom: 15px;
+        }
+        button {
+            background: linear-gradient(145deg, #e6b466, #c6954a);
+            color: #0b0d14;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 40px;
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: 0.3s;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            transform: scale(1.02);
+            box-shadow: 0 10px 30px #e6b46680;
+        }
+        button.secondary {
+            background: transparent;
+            border: 2px solid #e6b466;
+            color: #e6b466;
+        }
+        /* Upload area */
+        .upload-area {
+            border: 2px dashed #e6b46660;
+            border-radius: 30px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: 0.3s;
+            margin-bottom: 20px;
+        }
+        .upload-area:hover {
+            border-color: #e6b466;
+            background: #ffffff10;
+        }
+        .upload-area i {
+            font-size: 3rem;
+            color: #e6b466;
+            margin-bottom: 10px;
+        }
+        #fileInput { display: none; }
+        #previewImage {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 20px;
+            margin-top: 20px;
+            border: 2px solid #e6b466;
+        }
+        /* Grid */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 800px) {
+            .grid-2 { grid-template-columns: 1fr; }
+        }
+        /* Data rows */
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #2a384a;
+        }
+        .data-row:last-child { border-bottom: none; }
+        .label { color: #9aa8b8; }
+        .value { font-weight: 700; color: #e6b466; }
+        .value.buy { color: #4caf50; }
+        .value.sell { color: #f44336; }
+        /* AI Voting */
+        .ai-vote {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            background: #1a2535;
+            padding: 15px;
+            border-radius: 50px;
+            margin-bottom: 10px;
+        }
+        .ai-vote i { font-size: 1.8rem; color: #e6b466; width: 40px; }
+        .vote-bar {
+            height: 10px;
+            background: #2a384a;
+            border-radius: 10px;
+            flex: 1;
+        }
+        .vote-fill {
+            height: 100%;
+            background: #e6b466;
+            border-radius: 10px;
+            width: 0%;
+        }
+        /* Chart container */
+        .chart-container {
+            height: 400px;
+            margin: 20px 0;
+            border-radius: 24px;
+            overflow: hidden;
+            background: #0f1622;
+        }
+        /* Loading */
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }
+        .spinner {
+            border: 6px solid #2a384a;
+            border-top: 6px solid #e6b466;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        /* Info box */
+        .info-box {
+            background: #1e2a3a;
+            border-radius: 20px;
+            padding: 15px;
+            margin-top: 20px;
+            font-size: 0.9rem;
+            color: #b0c0d0;
+        }
+        .info-box a { color: #e6b466; }
+        /* Disclaimer */
+        .disclaimer {
+            text-align: center;
+            color: #6c7a8a;
+            font-size: 0.85rem;
+            margin-top: 40px;
+            padding: 20px;
+            border-top: 1px solid #2a384a;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="logo">
+                <i class="fas fa-mask"></i> KAGE NONAME <span style="font-size:1rem; color:#e6b466;">HYBRID</span>
+            </div>
+            <div class="badge">
+                <i class="fas fa-camera"></i> + <i class="fas fa-chart-line"></i> REAL-TIME
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab active" data-tab="photo">📸 Analisis Foto (Gemini)</button>
+            <button class="tab" data-tab="realtime">📊 Data Real-Time + AI</button>
+        </div>
+
+        <!-- ==================== TAB 1: ANALISIS FOTO ==================== -->
+        <div id="tab-photo" class="tab-content" style="display: block;">
+            <div class="card">
+                <div class="card-title"><i class="fas fa-camera"></i> Upload Chart untuk Analisis Gemini</div>
+                
+                <!-- GANTI API KEY GEMINI DI SINI -->
+                <div class="info-box" style="border-left: 5px solid #e6b466;">
+                    <strong>⚠️ PERHATIAN:</strong> Kamu harus punya API Key Gemini. Dapat gratis di 
+                    <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a>.
+                    <br>Setelah dapat, masukkan key di bagian <code style="background:#2a384a; padding:2px 6px;">const GEMINI_API_KEY = '...'</code> pada baris 250 (lihat petunjuk di kode).
+                </div>
+
+                <div class="upload-area" id="uploadArea">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <p>Klik atau seret foto chart di sini</p>
+                    <input type="file" id="fileInput" accept="image/*">
+                </div>
+                <div id="previewContainer" style="display:none; text-align:center;">
+                    <img id="previewImage" src="" alt="Preview">
+                </div>
+
+                <button id="analyzePhotoBtn"><i class="fas fa-magic"></i> Analisis dengan Gemini</button>
+                <div id="photoResult" class="card" style="display:none; margin-top:20px;">
+                    <div class="card-title">📝 Hasil Analisis</div>
+                    <div id="photoResultText" style="white-space: pre-wrap; background:#1e2a3a; padding:20px; border-radius:20px;"></div>
+                </div>
+
+                <div class="loading" id="photoLoading">
+                    <div class="spinner"></div>
+                    <p>Mengirim ke Gemini AI...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== TAB 2: DATA REAL-TIME ==================== -->
+        <div id="tab-realtime" class="tab-content" style="display: none;">
+            <div class="card">
+                <div class="card-title"><i class="fas fa-chart-line"></i> Analisis Real-Time + AI Ensemble</div>
+                
+                <!-- Control Panel -->
+                <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                    <div style="flex:1;">
+                        <label>Pair</label>
+                        <select id="pairSelect">
+                            <option value="BTCUSDT">BTC/USDT</option>
+                            <option value="ETHUSDT">ETH/USDT</option>
+                            <option value="BNBUSDT">BNB/USDT</option>
+                            <option value="SOLUSDT">SOL/USDT</option>
+                        </select>
+                    </div>
+                    <div style="flex:1;">
+                        <label>Timeframe</label>
+                        <select id="timeframeSelect">
+                            <option value="1h">1 Jam</option>
+                            <option value="4h" selected>4 Jam</option>
+                            <option value="1d">1 Hari</option>
+                        </select>
+                    </div>
+                    <div style="flex:1;">
+                        <label>Modal ($)</label>
+                        <input type="number" id="capitalInput" value="1000">
+                    </div>
+                    <div style="flex:1;">
+                        <label>Risk %</label>
+                        <input type="number" id="riskInput" value="2">
+                    </div>
+                </div>
+                <button id="loadRealBtn"><i class="fas fa-sync-alt"></i> Ambil Data & Analisis</button>
+
+                <!-- Chart -->
+                <div class="chart-container" id="realtimeChart"></div>
+
+                <!-- Indikator Tabs -->
+                <div style="display: flex; gap: 10px; margin: 20px 0; flex-wrap: wrap;">
+                    <button class="secondary ind-btn" data-ind="sma">SMA</button>
+                    <button class="secondary ind-btn" data-ind="ema">EMA</button>
+                    <button class="secondary ind-btn" data-ind="rsi">RSI</button>
+                    <button class="secondary ind-btn" data-ind="bb">Bollinger</button>
+                </div>
+
+                <!-- AI Voting -->
+                <div class="grid-2">
+                    <div>
+                        <h3>🤖 AI Ensemble</h3>
+                        <div class="ai-vote">
+                            <i class="fas fa-chart-bar"></i>
+                            <span style="width:100px;">Teknikal</span>
+                            <div class="vote-bar"><div class="vote-fill" id="techVote" style="width:0%"></div></div>
+                            <span id="techPercent">0%</span>
+                        </div>
+                        <div class="ai-vote">
+                            <i class="fas fa-newspaper"></i>
+                            <span style="width:100px;">Sentimen</span>
+                            <div class="vote-bar"><div class="vote-fill" id="sentVote" style="width:0%"></div></div>
+                            <span id="sentPercent">0%</span>
+                        </div>
+                        <div class="ai-vote">
+                            <i class="fas fa-chart-pie"></i>
+                            <span style="width:100px;">Pattern</span>
+                            <div class="vote-bar"><div class="vote-fill" id="patternVote" style="width:0%"></div></div>
+                            <span id="patternPercent">0%</span>
+                        </div>
+                        <div style="margin-top:20px; background:#1e2a3a; padding:15px; border-radius:28px;">
+                            <div class="data-row"><span class="label">Konsensus:</span> <span class="value" id="consensusSignal">NEUTRAL</span></div>
+                            <div class="data-row"><span class="label">Confidence:</span> <span class="value" id="consensusPercent">0%</span></div>
+                        </div>
+                    </div>
+                    <div>
+                        <h3>🎯 Rekomendasi</h3>
+                        <div class="data-row"><span class="label">Entry</span> <span class="value" id="recEntry">-</span></div>
+                        <div class="data-row"><span class="label">Stop Loss</span> <span class="value" id="recSL">-</span></div>
+                        <div class="data-row"><span class="label">TP1</span> <span class="value" id="recTP1">-</span></div>
+                        <div class="data-row"><span class="label">TP2</span> <span class="value" id="recTP2">-</span></div>
+                        <div class="data-row"><span class="label">TP3</span> <span class="value" id="recTP3">-</span></div>
+                        <div class="data-row"><span class="label">Risk/Reward</span> <span class="value" id="recRR">-</span></div>
+                        <div class="data-row"><span class="label">Lot Size</span> <span class="value" id="recLot">-</span></div>
+                    </div>
+                </div>
+
+                <div class="loading" id="realLoading">
+                    <div class="spinner"></div>
+                    <p>Mengambil data & menghitung indikator...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Disclaimer -->
+        <div class="disclaimer">
+            <i class="fas fa-exclamation-triangle"></i> Semua analisis bersifat probabilitas. Bukan saran keuangan. Trading berisiko tinggi.
+        </div>
+    </div>
+
+    <script>
+        // ==================== KONFIGURASI ====================
+        // 🔴 GANTI API KEY GEMINI KAMU DI SINI (dapatkan gratis di https://aistudio.google.com/apikey)
+        const GEMINI_API_KEY = 'MASUKKAN_API_KEY_ANDA_DISINI';   // <--- UBAH BARIS INI
+
+        // ==================== GLOBAL ====================
+        let currentChart = null;
+        let currentSeries = null;
+        let currentData = [];
+
+        // ==================== TAB SWITCHING ====================
+        const tabs = document.querySelectorAll('.tab');
+        const contents = {
+            photo: document.getElementById('tab-photo'),
+            realtime: document.getElementById('tab-realtime')
+        };
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                const target = tab.dataset.tab;
+                contents.photo.style.display = target === 'photo' ? 'block' : 'none';
+                contents.realtime.style.display = target === 'realtime' ? 'block' : 'none';
+            });
+        });
+
+        // ==================== FITUR FOTO (GEMINI) ====================
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const previewContainer = document.getElementById('previewContainer');
+        const previewImage = document.getElementById('previewImage');
+        const analyzePhotoBtn = document.getElementById('analyzePhotoBtn');
+        const photoResult = document.getElementById('photoResult');
+        const photoResultText = document.getElementById('photoResultText');
+        const photoLoading = document.getElementById('photoLoading');
+
+        uploadArea.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    previewImage.src = event.target.result;
+                    previewContainer.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        analyzePhotoBtn.addEventListener('click', async () => {
+            if (GEMINI_API_KEY === 'AIzaSyBYNxUvRCeZ7WCRh2ipzJ9h20v7igvAsdM') {
+                alert('⚠️ Harap masukkan API Key Gemini terlebih dahulu di baris 250!');
+                return;
+            }
+            const file = fileInput.files[0];
+            if (!file) {
+                alert('Pilih foto chart dulu!');
+                return;
+            }
+
+            photoLoading.style.display = 'block';
+            photoResult.style.display = 'none';
+
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onloadend = async () => {
+                const base64Image = reader.result.split(',')[1];
+
+                const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+                const payload = {
+                    contents: [{
+                        parts: [
+                            { text: "Analisis chart trading ini secara detail. Berikan tren saat ini, level support dan resistance terdekat, titik entry yang ideal, stop loss, dan tiga target profit. Sertakan alasan teknikalnya (pola candlestick, indikator, struktur pasar). Gunakan bahasa Indonesia." },
+                            { inline_data: { mime_type: file.type, data: base64Image } }
+                        ]
+                    }]
+                };
+
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    const data = await response.json();
+                    photoLoading.style.display = 'none';
+
+                    if (data.error) {
+                        photoResultText.innerText = `Error: ${data.error.message}`;
+                    } else {
+                        const text = data.candidates[0].content.parts[0].text;
+                        photoResultText.innerText = text;
+                    }
+                    photoResult.style.display = 'block';
+                } catch (err) {
+                    photoLoading.style.display = 'none';
+                    photoResultText.innerText = `Gagal: ${err.message}`;
+                    photoResult.style.display = 'block';
+                }
+            };
+        });
+
+        // ==================== FITUR REAL-TIME ====================
+        const pairSelect = document.getElementById('pairSelect');
+        const timeframeSelect = document.getElementById('timeframeSelect');
+        const capitalInput = document.getElementById('capitalInput');
+        const riskInput = document.getElementById('riskInput');
+        const loadRealBtn = document.getElementById('loadRealBtn');
+        const realLoading = document.getElementById('realLoading');
+        const chartContainer = document.getElementById('realtimeChart');
+
+        // Inisialisasi chart
+        function initRealtimeChart() {
+            if (currentChart) currentChart.remove();
+            currentChart = LightweightCharts.createChart(chartContainer, {
+                width: chartContainer.clientWidth,
+                height: 400,
+                layout: { backgroundColor: '#0f1622', textColor: '#e5e9f0' },
+                grid: { vertLines: { color: '#2a384a' }, horzLines: { color: '#2a384a' } },
+                timeScale: { timeVisible: true, secondsVisible: false }
+            });
+            currentSeries = currentChart.addCandlestickSeries({
+                upColor: '#4caf50', downColor: '#f44336', borderVisible: false,
+                wickUpColor: '#4caf50', wickDownColor: '#f44336'
+            });
+        }
+        initRealtimeChart();
+        window.addEventListener('resize', () => {
+            if (currentChart) {
+                currentChart.applyOptions({ width: chartContainer.clientWidth });
+            }
+        });
+
+        // Fungsi ambil data Binance
+        async function fetchBinanceData(symbol, interval, limit = 100) {
+            const url = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
+            const res = await fetch(url);
+            const data = await res.json();
+            if (!Array.isArray(data)) throw new Error('Gagal ambil data');
+            return data.map(d => ({
+                time: d[0] / 1000,
+                open: parseFloat(d[1]),
+                high: parseFloat(d[2]),
+                low: parseFloat(d[3]),
+                close: parseFloat(d[4]),
+                volume: parseFloat(d[5])
+            }));
+        }
+
+        // Hitung indikator
+        function calculateScores(data) {
+            const closes = data.map(d => d.close);
+            const lastClose = closes[closes.length-1];
+            const highs = data.map(d => d.high);
+            const lows = data.map(d => d.low);
+            
+            // SMA 20
+            const sma20 = closes.slice(-20).reduce((a,b) => a + b, 0) / 20;
+            
+            // RSI 14
+            let gains = 0, losses = 0;
+            for (let i = data.length - 15; i < data.length - 1; i++) {
+                const diff = closes[i+1] - closes[i];
+                if (diff > 0) gains += diff;
+                else losses -= diff;
+            }
+            const avgGain = gains / 14;
+            const avgLoss = losses / 14;
+            const rsi = avgLoss === 0 ? 100 : 100 - 100 / (1 + avgGain/avgLoss);
+            
+            // Support/Resistance sederhana
+            const recentHigh = Math.max(...highs.slice(-10));
+            const recentLow = Math.min(...lows.slice(-10));
+
+            // Skor teknikal
+            let tech = 50;
+            if (lastClose > sma20) tech += 15;
+            if (rsi < 30) tech += 20;
+            else if (rsi > 70) tech -= 20;
+            if (lastClose > recentHigh * 0.98) tech += 10;
+            tech = Math.min(100, Math.max(0, tech));
+
+            // Sentimen (simulasi, bisa diganti dengan API berita nanti)
+            let sent = Math.random() * 40 + 30;
+
+            // Pattern (deteksi sederhana)
+            let pat = 50;
+            const last = data[data.length-1];
+            const prev = data[data.length-2];
+            if (last.close > last.open && prev.close < prev.open && last.close > prev.high) pat += 20;
+            pat = Math.min(100, Math.max(0, pat));
+
+            return { tech, sent, pat, lastClose, recentHigh, recentLow, sma20, rsi };
+        }
+
+        // Generate rekomendasi
+        function generateRecommendation(data, scores, capital, riskPercent) {
+            const { tech, sent, pat, lastClose } = scores;
+            const consensus = (tech * 0.5 + sent * 0.25 + pat * 0.25);
+            let signal = 'NEUTRAL';
+            if (consensus >= 65) signal = 'BUY';
+            else if (consensus <= 35) signal = 'SELL';
+
+            const atr = (data[data.length-1].high - data[data.length-1].low) * 0.5;
+            let entry = lastClose;
+            let sl, tp1, tp2, tp3;
+            if (signal === 'BUY') {
+                sl = entry - atr;
+                tp1 = entry + atr * 2;
+                tp2 = entry + atr * 3;
+                tp3 = entry + atr * 5;
+            } else if (signal === 'SELL') {
+                sl = entry + atr;
+                tp1 = entry - atr * 2;
+                tp2 = entry - atr * 3;
+                tp3 = entry - atr * 5;
+            } else {
+                sl = entry - atr;
+                tp1 = entry + atr;
+                tp2 = entry + atr * 2;
+                tp3 = entry + atr * 3;
+            }
+
+            const riskAmount = capital * (riskPercent / 100);
+            const stopDist = Math.abs(entry - sl);
+            const lot = stopDist > 0 ? (riskAmount / stopDist).toFixed(4) : 0;
+            const rr = Math.abs((tp1 - entry) / (entry - sl)).toFixed(2);
+
+            return {
+                signal,
+                consensus: consensus.toFixed(0),
+                entry: entry.toFixed(2),
+                sl: sl.toFixed(2),
+                tp1: tp1.toFixed(2),
+                tp2: tp2.toFixed(2),
+                tp3: tp3.toFixed(2),
+                rr,
+                lot
+            };
+        }
+
+        // Update UI real-time
+        function updateRealtimeUI(data) {
+            const scores = calculateScores(data);
+            const capital = parseFloat(capitalInput.value);
+            const risk = parseFloat(riskInput.value);
+            const rec = generateRecommendation(data, scores, capital, risk);
+
+            document.getElementById('techVote').style.width = scores.tech + '%';
+            document.getElementById('techPercent').innerText = scores.tech.toFixed(0) + '%';
+            document.getElementById('sentVote').style.width = scores.sent + '%';
+            document.getElementById('sentPercent').innerText = scores.sent.toFixed(0) + '%';
+            document.getElementById('patternVote').style.width = scores.pat + '%';
+            document.getElementById('patternPercent').innerText = scores.pat.toFixed(0) + '%';
+
+            document.getElementById('consensusSignal').innerText = rec.signal;
+            document.getElementById('consensusPercent').innerText = rec.consensus + '%';
+
+            document.getElementById('recEntry').innerText = '$' + rec.entry;
+            document.getElementById('recSL').innerText = '$' + rec.sl;
+            document.getElementById('recTP1').innerText = '$' + rec.tp1;
+            document.getElementById('recTP2').innerText = '$' + rec.tp2;
+            document.getElementById('recTP3').innerText = '$' + rec.tp3;
+            document.getElementById('recRR').innerText = '1:' + rec.rr;
+            document.getElementById('recLot').innerText = rec.lot;
+        }
+
+        // Load data real-time
+        loadRealBtn.addEventListener('click', async () => {
+            realLoading.style.display = 'block';
+            const pair = pairSelect.value;
+            const tf = timeframeSelect.value;
+            try {
+                const data = await fetchBinanceData(pair, tf, 150);
+                currentData = data;
+                currentSeries.setData(data);
+                updateRealtimeUI(data);
+            } catch (e) {
+                alert('Error: ' + e.message);
+            } finally {
+                realLoading.style.display = 'none';
+            }
+        });
+
+        // Indikator buttons (sementara hanya placeholder, bisa dikembangkan lebih lanjut)
+        document.querySelectorAll('.ind-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                alert('Fitur indikator sedang dalam pengembangan. Untuk sekarang, data sudah ditampilkan di chart candlestick.');
+            });
+        });
+
+        // Muat data pertama kali
+        setTimeout(() => {
+            loadRealBtn.click();
+        }, 1000);
+    </script>
+</body>
+</html>
