@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kage Noname Trade - Dewa Edition</title>
+    <!-- Google Fonts & Font Awesome -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Chart.js untuk grafik prediksi -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: radial-gradient(circle at 20% 30%, #1a1f2e, #0b0d14);
+            color: #f0f4fa;
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+        /* Glassmorphism & Glow Effects */
+        .glass {
+            background: rgba(20, 30, 45, 0.4);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 215, 150, 0.15);
+            border-radius: 32px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(230, 180, 100, 0.1) inset;
+        }
+        .glass-card {
+            background: rgba(18, 25, 40, 0.7);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(230, 180, 100, 0.2);
+            border-radius: 28px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(230, 180, 100, 0.2) inset;
+            transition: all 0.3s ease;
+        }
+        .glass-card:hover {
+            border-color: rgba(230, 180, 100, 0.6);
+            box-shadow: 0 30px 60px -12px rgba(230, 180, 100, 0.3), 0 0 0 1px #e6b466 inset;
+            transform: translateY(-4px);
+        }
+        .neon-glow {
+            text-shadow: 0 0 10px #e6b466, 0 0 20px #e6b466;
+        }
+        /* Navbar */
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem 5%;
+            background: rgba(8, 12, 18, 0.85);
+            backdrop-filter: blur(15px);
+            border-bottom: 1px solid rgba(230, 180, 100, 0.25);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        .logo {
+            font-size: 2rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #f0f4fa, #e6b466, #d4a15a);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: 2px;
+        }
+        .logo i {
+            background: none;
+            -webkit-text-fill-color: #e6b466;
+            margin-right: 8px;
+        }
+        .nav-links a {
+            color: #d0d8e5;
+            text-decoration: none;
+            margin-left: 2rem;
+            font-weight: 500;
+            transition: color 0.3s;
+            position: relative;
+        }
+        .nav-links a::after {
+            content: '';
+            position: absolute;
+            bottom: -6px;
+            left: 0;
+            width: 0%;
+            height: 2px;
+            background: #e6b466;
+            transition: width 0.3s;
+        }
+        .nav-links a:hover::after {
+            width: 100%;
+        }
+        .nav-links a:hover {
+            color: #e6b466;
+        }
+        /* Buttons */
+        .btn {
+            display: inline-block;
+            padding: 0.9rem 2.2rem;
+            border-radius: 60px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            letter-spacing: 0.5px;
+        }
+        .btn-primary {
+            background: linear-gradient(145deg, #e6b466, #c6954a);
+            color: #0b0d14;
+            box-shadow: 0 10px 20px -5px #e6b46680;
+        }
+        .btn-primary:hover {
+            background: linear-gradient(145deg, #f0c27b, #dba55a);
+            box-shadow: 0 15px 30px -5px #e6b466cc;
+            transform: scale(1.05);
+        }
+        .btn-outline {
+            border: 2px solid #e6b466;
+            color: #e6b466;
+            background: transparent;
+            box-shadow: 0 0 15px #e6b46630;
+        }
+        .btn-outline:hover {
+            background: #e6b46620;
+            box-shadow: 0 0 30px #e6b466;
+            transform: translateY(-3px);
+        }
+        /* Hero */
+        .hero {
+            padding: 4rem 5%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 3rem;
+        }
+        .hero-content {
+            flex: 1 1 450px;
+        }
+        .hero-content h1 {
+            font-size: 4rem;
+            font-weight: 800;
+            line-height: 1.2;
+            margin-bottom: 1.5rem;
+        }
+        .hero-content .gradient-text {
+            background: linear-gradient(135deg, #f0f4fa, #e6b466);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .hero-content p {
+            font-size: 1.2rem;
+            color: #b0c0d0;
+            margin-bottom: 2rem;
+            max-width: 600px;
+        }
+        .hero-stats {
+            display: flex;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+        .stat-item {
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 2.2rem;
+            font-weight: 800;
+            color: #e6b466;
+        }
+        .stat-label {
+            font-size: 0.9rem;
+            color: #9aa8b8;
+            text-transform: uppercase;
+        }
+        .hero-image {
+            flex: 1 1 450px;
+            text-align: center;
+        }
+        .hero-image .glass {
+            padding: 1.5rem;
+            border-radius: 40px;
+        }
+        .hero-image img {
+            max-width: 100%;
+            border-radius: 28px;
+            border: 1px solid #e6b46630;
+        }
+        /* Section titles */
+        .section-title {
+            text-align: center;
+            font-size: 2.8rem;
+            font-weight: 700;
+            margin-bottom: 3rem;
+        }
+        .section-title span {
+            color: #e6b466;
+            border-bottom: 3px solid #e6b466;
+            padding-bottom: 8px;
+        }
+        /* Upload area */
+        .demo-section {
+            padding: 4rem 5%;
+        }
+        .upload-area {
+            background: rgba(20, 30, 45, 0.6);
+            border: 2px dashed #e6b46660;
+            border-radius: 48px;
+            padding: 3rem;
+            text-align: center;
+            max-width: 650px;
+            margin: 0 auto 2rem;
+            transition: all 0.3s;
+            cursor: pointer;
+            backdrop-filter: blur(6px);
+        }
+        .upload-area:hover {
+            border-color: #e6b466;
+            background: rgba(30, 40, 60, 0.7);
+            box-shadow: 0 0 50px #e6b46630;
+        }
+        .upload-area i {
+            font-size: 4rem;
+            color: #e6b466;
+            margin-bottom: 1rem;
+            filter: drop-shadow(0 0 15px #e6b466);
+        }
+        .upload-area p {
+            font-size: 1.2rem;
+            color: #d0d8e5;
+        }
+        .file-name {
+            margin-top: 1rem;
+            color: #e6b466;
+            font-weight: 600;
+        }
+        .preview-container {
+            max-width: 800px;
+            margin: 2rem auto;
+            display: none;
+        }
+        .preview-container img {
+            width: 100%;
+            border-radius: 32px;
+            border: 2px solid #e6b466;
+            box-shadow: 0 0 40px #e6b46640;
+        }
+        /* Loading animasi multi-AI */
+        .loading-overlay {
+            display: none;
+            text-align: center;
+            padding: 4rem;
+        }
+        .ai-ensemble {
+            display: flex;
+            justify-content: center;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+            margin: 2rem 0;
+        }
+        .ai-agent {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: #1e2a3a;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid #e6b466;
+            box-shadow: 0 0 20px #e6b466;
+            animation: pulse 1.5s infinite alternate;
+        }
+        .ai-agent i {
+            font-size: 2.5rem;
+            color: #e6b466;
+        }
+        .ai-agent span {
+            margin-top: 5px;
+            font-weight: 600;
+            color: #e6b466;
+        }
+        .ai-agent:nth-child(2) { animation-delay: 0.2s; }
+        .ai-agent:nth-child(3) { animation-delay: 0.4s; }
+        .ai-agent:nth-child(4) { animation-delay: 0.6s; }
+        .ai-agent:nth-child(5) { animation-delay: 0.8s; }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 10px #e6b466; transform: scale(1); }
+            100% { box-shadow: 0 0 40px #e6b466; transform: scale(1.1); background: #2a3a4a; }
+        }
+        /* Result container */
+        .result-container {
+            display: none;
+            margin-top: 3rem;
+        }
+        .result-grid {
+            display: grid;
+            grid-template-columns: 1.2fr 0.8fr;
+            gap: 2rem;
+        }
+        /* Chart dengan anotasi */
+        .chart-card {
+            grid-column: 1 / 2;
+        }
+        .chart-wrapper {
+            position: relative;
+        }
+        .chart-wrapper img {
+            width: 100%;
+            border-radius: 28px;
+            border: 2px solid #e6b466;
+        }
+        .annotation-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        .annotation-line {
+            position: absolute;
+            border: 2px dashed;
+            font-size: 0.8rem;
+            color: white;
+            text-shadow: 0 0 5px black;
+        }
+        /* Voting AI */
+        .voting-section {
+            grid-column: 2 / 3;
+        }
+        .voting-card {
+            background: rgba(15, 22, 35, 0.9);
+            border-radius: 32px;
+            padding: 1.8rem;
+            backdrop-filter: blur(8px);
+            border: 1px solid #e6b46640;
+        }
+        .ai-vote-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1.2rem;
+            padding: 0.8rem;
+            background: #1a2535;
+            border-radius: 50px;
+            border-left: 5px solid #e6b466;
+        }
+        .ai-vote-item i {
+            font-size: 1.8rem;
+            color: #e6b466;
+            width: 40px;
+            text-align: center;
+        }
+        .vote-info {
+            flex: 1;
+            margin-left: 1rem;
+        }
+        .vote-name {
+            font-weight: 700;
+        }
+        .vote-detail {
+            font-size: 0.9rem;
+            color: #aab8c8;
+        }
+        .vote-confidence {
+            font-weight: 700;
+            color: #e6b466;
+        }
+        .consensus {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: #e6b46620;
+            border-radius: 28px;
+            text-align: center;
+            border: 1px solid #e6b466;
+        }
+        /* Data teknikal */
+        .data-card {
+            background: #121b28;
+            border-radius: 32px;
+            padding: 2rem;
+            border: 1px solid #e6b46640;
+            margin-top: 1rem;
+        }
+        .data-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 1rem 0;
+            border-bottom: 1px solid #2a384a;
+        }
+        .data-item:last-child {
+            border-bottom: none;
+        }
+        .label {
+            color: #a0b0c0;
+        }
+        .value {
+            font-weight: 700;
+            color: #e6b466;
+        }
+        .value.buy { color: #4caf50; }
+        .value.sell { color: #f44336; }
+        /* Prediksi multi-timeframe */
+        .prediction-section {
+            margin-top: 2rem;
+            grid-column: 1 / -1;
+        }
+        .prediction-chart {
+            background: #121b28;
+            border-radius: 32px;
+            padding: 2rem;
+            border: 1px solid #e6b46640;
+        }
+        .timeframe-tabs {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .tab {
+            padding: 0.5rem 1.5rem;
+            border-radius: 40px;
+            background: #1e2a3a;
+            cursor: pointer;
+            transition: 0.3s;
+            border: 1px solid transparent;
+        }
+        .tab.active {
+            background: #e6b466;
+            color: #0b0d14;
+            font-weight: 700;
+            border-color: #e6b466;
+        }
+        canvas {
+            max-height: 200px;
+            width: 100% !important;
+        }
+        /* Correlation matrix */
+        .correlation-grid {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+        }
+        .correlation-item {
+            background: #1e2a3a;
+            padding: 1rem 1.5rem;
+            border-radius: 40px;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            border-left: 5px solid #e6b466;
+        }
+        /* Tombol aksi */
+        .action-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin: 3rem 0;
+            flex-wrap: wrap;
+        }
+        .disclaimer {
+            text-align: center;
+            font-size: 0.9rem;
+            color: #6c7a8a;
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 1rem;
+            border-top: 1px solid #2a384a;
+        }
+        footer {
+            padding: 2rem 5%;
+            text-align: center;
+            background: #0a0f18;
+            border-top: 1px solid #e6b46630;
+        }
+        /* Responsive */
+        @media (max-width: 1000px) {
+            .result-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo"><i class="fas fa-mask"></i> KAGE NONAME</div>
+        <div class="nav-links">
+            <a href="#">Beranda</a>
+            <a href="#">Dewa Tools</a>
+            <a href="#">Harga</a>
+            <a href="#">Dashboard</a>
+        </div>
+    </nav>
+
+    <section class="hero">
+        <div class="hero-content">
+            <h1>Raih <span class="gradient-text">Dewa Trading</span> dengan Kekuatan 5 AI</h1>
+            <p>Gabungan analisis teknikal, on-chain, sentimen, order flow, dan adaptif learning dalam satu platform. Akurasi hingga 90%.</p>
+            <div class="hero-stats">
+                <div class="stat-item"><div class="stat-value">90%</div><div class="stat-label">Akurasi</div></div>
+                <div class="stat-item"><div class="stat-value">5 AI</div><div class="stat-label">Ensemble</div></div>
+                <div class="stat-item"><div class="stat-value">0.1s</div><div class="stat-label">Respons</div></div>
+            </div>
+            <div style="margin-top: 2rem;">
+                <a href="#demo" class="btn btn-primary"><i class="fas fa-cloud-upload-alt"></i> Coba Gratis</a>
+                <a href="#" class="btn btn-outline"><i class="fas fa-play"></i> Demo Video</a>
+            </div>
+        </div>
+        <div class="hero-image">
+            <div class="glass">
+                <img src="https://picsum.photos/seed/chart-dewa/550/400" alt="Preview Chart">
+            </div>
+        </div>
+    </section>
+
+    <section id="demo" class="demo-section">
+        <h2 class="section-title"><span>Analisis Dewa</span> Dimulai dari Sini</h2>
+        <div class="upload-area" id="uploadArea">
+            <i class="fas fa-cloud-upload-alt"></i>
+            <p>Seret foto chart di sini atau klik untuk unggah</p>
+            <p style="font-size:0.9rem; color:#9aa8b8;">Format: JPG, PNG (Maks 10 MB)</p>
+            <input type="file" id="fileInput" accept="image/*" hidden>
+        </div>
+        <div class="file-name" id="fileName"></div>
+
+        <div class="preview-container" id="previewContainer">
+            <img id="previewImage" src="" alt="Preview">
+            <div style="text-align:center; margin:1.5rem 0;">
+                <button class="btn btn-primary" id="analyzeBtn" style="padding:1.2rem 4rem; font-size:1.3rem;">
+                    <i class="fas fa-robot"></i> Panggil 5 AI
+                </button>
+            </div>
+        </div>
+
+        <!-- Loading Multi-AI -->
+        <div class="loading-overlay" id="loading">
+            <h2 class="neon-glow">Mengaktifkan 5 AI...</h2>
+            <div class="ai-ensemble">
+                <div class="ai-agent"><i class="fas fa-chart-line"></i><span>Teknikal</span></div>
+                <div class="ai-agent"><i class="fas fa-wave-square"></i><span>Fibonacci</span></div>
+                <div class="ai-agent"><i class="fas fa-database"></i><span>On-Chain</span></div>
+                <div class="ai-agent"><i class="fas fa-newspaper"></i><span>Sentimen</span></div>
+                <div class="ai-agent"><i class="fas fa-brain"></i><span>Adaptif</span></div>
+            </div>
+            <p style="color:#e6b466; font-size:1.2rem;">Menganalisis dari berbagai dimensi...</p>
+        </div>
+
+        <!-- Hasil Analisis Dewa -->
+        <div class="result-container" id="resultContainer">
+            <div class="result-grid">
+                <!-- Kolom Kiri: Chart -->
+                <div class="chart-card glass-card">
+                    <h3 style="margin-bottom:1rem; display:flex; align-items:center; gap:10px;"><i class="fas fa-chart-pie" style="color:#e6b466;"></i> Chart + Anotasi Real-Time</h3>
+                    <div class="chart-wrapper">
+                        <img id="resultImage" src="https://picsum.photos/seed/chart-analysed/600/400" alt="Analysed Chart">
+                        <div class="annotation-overlay" id="annotationOverlay"></div>
+                    </div>
+                </div>
+
+                <!-- Kolom Kanan: Voting AI & Data -->
+                <div class="voting-section">
+                    <div class="voting-card">
+                        <h3><i class="fas fa-users"></i> Voting 5 AI</h3>
+                        <div class="ai-vote-item">
+                            <i class="fas fa-chart-line"></i>
+                            <div class="vote-info">
+                                <div class="vote-name">AI Teknikal Klasik</div>
+                                <div class="vote-detail">Support/Resistance, Pattern</div>
+                            </div>
+                            <div class="vote-confidence">85%</div>
+                        </div>
+                        <div class="ai-vote-item">
+                            <i class="fas fa-wave-square"></i>
+                            <div class="vote-info">
+                                <div class="vote-name">AI Fibonacci & Gann</div>
+                                <div class="vote-detail">Level emas, time cycle</div>
+                            </div>
+                            <div class="vote-confidence">88%</div>
+                        </div>
+                        <div class="ai-vote-item">
+                            <i class="fas fa-database"></i>
+                            <div class="vote-info">
+                                <div class="vote-name">AI On-Chain</div>
+                                <div class="vote-detail">Whale movement, exchange flow</div>
+                            </div>
+                            <div class="vote-confidence">82%</div>
+                        </div>
+                        <div class="ai-vote-item">
+                     
