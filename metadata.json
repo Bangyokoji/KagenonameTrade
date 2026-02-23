@@ -1,0 +1,8 @@
+{
+  "name": "KagenonameTrade",
+  "description": "Premium trading signal analysis platform using AI and real-time market data.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
