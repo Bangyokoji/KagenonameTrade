@@ -1,0 +1,678 @@
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { 
+  Upload, 
+  TrendingUp, 
+  TrendingDown, 
+  Shield, 
+  User as UserIcon, 
+  LogOut, 
+  LayoutDashboard, 
+  History, 
+  Settings,
+  AlertCircle,
+  CheckCircle2,
+  XCircle,
+  Loader2,
+  ChevronRight,
+  PieChart,
+  Users,
+  Activity
+} from 'lucide-react';
+import { useDropzone } from 'react-dropzone';
+import axios from 'axios';
+import { PieChart as RePieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import { GoogleGenAI } from "@google/genai";
+
+axios.defaults.withCredentials = true;
+import { cn, type User, type Analysis } from './types';
+
+// --- Components ---
+
+const Navbar = ({ user, onLogout, activeTab, setActiveTab }: { user: User, onLogout: () => void, activeTab: string, setActiveTab: (t: string) => void }) => (
+  <nav className="fixed top-0 left-0 right-0 z-50 bg-black/50 backdrop-blur-xl border-b border-white/10 px-6 py-4 flex items-center justify-between">
+    <div className="flex items-center gap-2">
+      <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
+        <TrendingUp className="text-black w-6 h-6" />
+      </div>
+      <span className="text-xl font-bold tracking-tight text-white">Kagenoname<span className="text-emerald-400">Trade</span></span>
+    </div>
+
+    <div className="hidden md:flex items-center gap-8">
+      <button onClick={() => setActiveTab('analyze')} className={cn("text-sm font-medium transition-colors", activeTab === 'analyze' ? "text-emerald-400" : "text-zinc-400 hover:text-white")}>Analyze</button>
+      <button onClick={() => setActiveTab('history')} className={cn("text-sm font-medium transition-colors", activeTab === 'history' ? "text-emerald-400" : "text-zinc-400 hover:text-white")}>History</button>
+      {user.role === 'ADMIN' && (
+        <button onClick={() => setActiveTab('admin')} className={cn("text-sm font-medium transition-colors", activeTab === 'admin' ? "text-emerald-400" : "text-zinc-400 hover:text-white")}>Admin</button>
+      )}
+    </div>
+
+    <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3 px-3 py-1.5 bg-white/5 rounded-full border border-white/10">
+        <img src={user.avatar} alt={user.name} className="w-6 h-6 rounded-full" />
+        <span className="text-sm font-medium text-zinc-200">{user.name}</span>
+      </div>
+      <button onClick={onLogout} className="p-2 text-zinc-400 hover:text-red-400 transition-colors">
+        <LogOut className="w-5 h-5" />
+      </button>
+    </div>
+  </nav>
+);
+
+const AnalysisCard = ({ analysis, onFeedback }: { analysis: Analysis, onFeedback: (id: string, f: 'PROFIT' | 'LOSS') => void }) => {
+  const result = (analysis.result || {}) as any;
+  const action = result.action || 'HOLD';
+  const isBuy = action === 'BUY';
+  const isSell = action === 'SELL';
+  const confidence = Number(result.confidence) || 0;
+
+  const data = [
+    { name: 'Confidence', value: confidence },
+    { name: 'Remaining', value: 100 - confidence },
+  ];
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-zinc-900/50 border border-white/10 rounded-3xl p-8 backdrop-blur-sm"
+    >
+      <div className="flex flex-col lg:flex-row gap-12">
+        {/* Left: Score & Action */}
+        <div className="flex flex-col items-center text-center gap-6 min-w-[240px]">
+          <div className="relative w-48 h-48">
+            <ResponsiveContainer width="100%" height="100%">
+              <RePieChart>
+                <Pie
+                  data={data}
+                  innerRadius={60}
+                  outerRadius={80}
+                  paddingAngle={5}
+                  dataKey="value"
+                  startAngle={90}
+                  endAngle={450}
+                >
+                  <Cell fill={confidence >= 80 ? "#10b981" : confidence >= 50 ? "#f59e0b" : "#ef4444"} />
+                  <Cell fill="rgba(255,255,255,0.05)" />
+                </Pie>
+              </RePieChart>
+            </ResponsiveContainer>
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <span className="text-4xl font-bold text-white">{confidence}%</span>
+              <span className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">Signal Strength</span>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div className={cn(
+              "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border",
+              confidence >= 80 ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
+              confidence >= 50 ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/20" :
+              "bg-red-500/10 text-red-400 border-red-500/20"
+            )}>
+              {confidence >= 80 ? "High Quality Signal" : confidence >= 50 ? "Medium Quality Signal" : "Low Quality Signal"}
+            </div>
+            
+            <div className={cn(
+              "px-8 py-3 rounded-2xl text-2xl font-black tracking-tighter uppercase shadow-2xl",
+              isBuy ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shadow-emerald-500/10" :
+              isSell ? "bg-red-500/20 text-red-400 border border-red-500/30 shadow-red-500/10" :
+              "bg-zinc-500/20 text-zinc-400 border border-zinc-500/30 shadow-zinc-500/10"
+            )}>
+              {action}
+            </div>
+          </div>
+          
+          <div className="flex flex-col gap-1">
+            <span className="text-2xl font-bold text-white tracking-tight">{result.pair || 'Unknown Pair'}</span>
+            <span className="text-xs text-zinc-500 uppercase tracking-widest font-bold">{result.assetType || 'Unknown Asset'}</span>
+          </div>
+        </div>
+
+        {/* Right: Details */}
+        <div className="flex-1 space-y-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              { label: 'Entry', value: result.entry || 'Not Found' },
+              { label: 'Stop Loss', value: result.sl || 'Not Found', color: 'text-red-400' },
+              { label: 'Take Profit 1', value: result.tp1 || 'Not Found', color: 'text-emerald-400' },
+              { label: 'Take Profit 2', value: result.tp2 || 'Not Found', color: 'text-emerald-400' },
+            ].map((item, i) => (
+              <div key={i} className="bg-white/5 border border-white/10 rounded-2xl p-4 flex flex-col items-center justify-center text-center">
+                <span className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold block mb-1">{item.label}</span>
+                <span className={cn("text-xl font-mono font-black", item.color || "text-white")}>{item.value}</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="space-y-3">
+              <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                <Activity className="w-4 h-4 text-emerald-400" /> Technical Analysis
+              </h4>
+              <p className="text-sm text-zinc-400 leading-relaxed">{result.technical_analysis || 'No technical analysis provided.'}</p>
+            </div>
+            <div className="space-y-3">
+              <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                <PieChart className="w-4 h-4 text-emerald-400" /> Sentiment Analysis
+              </h4>
+              <p className="text-sm text-zinc-400 leading-relaxed">{result.sentiment_analysis || 'No sentiment analysis provided.'}</p>
+            </div>
+          </div>
+
+          {result.marketData && (
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-4">
+              <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-emerald-400" /> Real-time Market Data
+              </h4>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div>
+                  <span className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold block">Current Price</span>
+                  <span className="text-lg font-mono font-bold text-white">{result.marketData.price || '-'}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold block">24h High</span>
+                  <span className="text-lg font-mono font-bold text-zinc-300">{result.marketData.high || '-'}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold block">24h Low</span>
+                  <span className="text-lg font-mono font-bold text-zinc-300">{result.marketData.low || '-'}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold block">Bid/Ask</span>
+                  <span className="text-sm font-mono text-zinc-400">{result.marketData.bid || '-'} / {result.marketData.ask || '-'}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-2xl p-6">
+            <h4 className="text-sm font-bold text-emerald-400 mb-2">Why this confidence?</h4>
+            <p className="text-sm text-zinc-300 italic">"{result.confidence_reason || 'No explanation provided.'}"</p>
+          </div>
+
+          {!analysis.feedback && (
+            <div className="flex items-center gap-4 pt-4 border-t border-white/5">
+              <span className="text-sm text-zinc-500 font-medium">Result feedback:</span>
+              <button onClick={() => onFeedback(analysis.id, 'PROFIT')} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors text-sm font-bold">
+                <CheckCircle2 className="w-4 h-4" /> Profit
+              </button>
+              <button onClick={() => onFeedback(analysis.id, 'LOSS')} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors text-sm font-bold">
+                <XCircle className="w-4 h-4" /> Loss
+              </button>
+            </div>
+          )}
+          {analysis.feedback && (
+            <div className="flex items-center gap-2 pt-4 border-t border-white/5">
+              <span className="text-sm text-zinc-500">Feedback recorded:</span>
+              <span className={cn("text-sm font-bold uppercase tracking-widest", analysis.feedback === 'PROFIT' ? "text-emerald-400" : "text-red-400")}>
+                {analysis.feedback}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
+const AdminDashboard = () => {
+  const [stats, setStats] = useState<any>(null);
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchAdminData = async () => {
+      try {
+        const [statsRes, usersRes] = await Promise.all([
+          axios.get('/api/admin/stats'),
+          axios.get('/api/admin/users')
+        ]);
+        setStats(statsRes.data);
+        setUsers(usersRes.data);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchAdminData();
+  }, []);
+
+  if (loading) return <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-emerald-400" /></div>;
+
+  return (
+    <div className="space-y-12">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        {[
+          { label: 'Total Users', value: stats.totalUsers, icon: Users },
+          { label: 'Total Analyses', value: stats.totalAnalyses, icon: Activity },
+          { label: 'Avg Confidence', value: `${stats.avgConfidence}%`, icon: TrendingUp },
+          { label: 'Accuracy', value: '88%', icon: Shield },
+        ].map((stat, i) => (
+          <div key={i} className="bg-zinc-900/50 border border-white/10 rounded-3xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-2 bg-emerald-500/10 rounded-xl">
+                <stat.icon className="w-5 h-5 text-emerald-400" />
+              </div>
+            </div>
+            <span className="text-sm text-zinc-500 font-medium">{stat.label}</span>
+            <h3 className="text-3xl font-bold text-white mt-1">{stat.value}</h3>
+          </div>
+        ))}
+      </div>
+
+      <div className="bg-zinc-900/50 border border-white/10 rounded-3xl overflow-hidden">
+        <div className="px-8 py-6 border-b border-white/10">
+          <h3 className="text-lg font-bold text-white">User Management</h3>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="bg-white/5 text-zinc-500 text-xs uppercase tracking-widest font-bold">
+                <th className="px-8 py-4">User</th>
+                <th className="px-8 py-4">Email</th>
+                <th className="px-8 py-4">Role</th>
+                <th className="px-8 py-4">Joined</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/5">
+              {users.map((u) => (
+                <tr key={u.id} className="hover:bg-white/5 transition-colors">
+                  <td className="px-8 py-4 flex items-center gap-3">
+                    <img src={u.avatar} className="w-8 h-8 rounded-full" />
+                    <span className="text-sm font-medium text-white">{u.name}</span>
+                  </td>
+                  <td className="px-8 py-4 text-sm text-zinc-400">{u.email}</td>
+                  <td className="px-8 py-4">
+                    <span className={cn("px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest", u.role === 'ADMIN' ? "bg-purple-500/20 text-purple-400 border border-purple-500/30" : "bg-zinc-500/20 text-zinc-400 border border-zinc-500/30")}>
+                      {u.role}
+                    </span>
+                  </td>
+                  <td className="px-8 py-4 text-sm text-zinc-500">{new Date(u.id).toLocaleDateString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// --- Main App ---
+
+export default function App() {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('analyze');
+  const [analyses, setAnalyses] = useState<Analysis[]>([]);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analysisStatus, setAnalysisStatus] = useState<string>('');
+  const [lastError, setLastError] = useState<string | null>(null);
+  const [currentAnalysis, setCurrentAnalysis] = useState<Analysis | null>(null);
+
+  useEffect(() => {
+    checkAuth();
+  }, []);
+
+  const checkAuth = async () => {
+    try {
+      const res = await axios.get('/api/auth/me');
+      setUser(res.data);
+      fetchAnalyses();
+    } catch (err) {
+      setUser(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchAnalyses = async () => {
+    try {
+      const res = await axios.get('/api/analyses');
+      setAnalyses(res.data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleLogin = async () => {
+    try {
+      const res = await axios.get('/api/auth/url');
+      window.open(res.data.url, 'google_auth', 'width=500,height=600');
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.error || 'Google Login is currently unavailable. Please use Demo Mode.';
+      alert(errorMsg);
+    }
+  };
+
+  useEffect(() => {
+    const handleMessage = (e: MessageEvent) => {
+      if (e.data?.type === 'OAUTH_AUTH_SUCCESS') {
+        checkAuth();
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
+
+  const handleLogout = async () => {
+    await axios.post('/api/auth/logout');
+    setUser(null);
+  };
+
+  const onDrop = async (acceptedFiles: File[]) => {
+    console.log("Files dropped:", acceptedFiles);
+    if (acceptedFiles.length === 0) return;
+    
+    setAnalyzing(true);
+    setAnalysisStatus('Reading image...');
+    setCurrentAnalysis(null);
+    setLastError(null);
+    
+    const file = acceptedFiles[0];
+
+    // Safety timeout
+    const timeoutId = setTimeout(() => {
+      if (analyzing) {
+        setAnalyzing(false);
+        setLastError("Analysis timed out. Please try again.");
+      }
+    }, 60000);
+
+    try {
+      // Step 1: Read file as base64
+      const base64Image = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result as string;
+          resolve(result.split(',')[1]);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      // Step 2: Call Gemini API from Frontend
+      setAnalysisStatus('AI Analyzing signal...');
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey || apiKey === "undefined") {
+        throw new Error("Gemini API key is not configured or is invalid. Please check your AI Studio settings.");
+      }
+
+      const ai = new GoogleGenAI({ apiKey });
+      console.log("Calling Gemini API from frontend...");
+      
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: [
+          {
+            parts: [
+              {
+                inlineData: {
+                  data: base64Image,
+                  mimeType: file.type
+                }
+              },
+              {
+                text: `Analyze this trading signal screenshot with extreme precision. 
+                You are a professional senior market analyst. Extract the following information and return it as a JSON object:
+                - ocrText: All text found in the image.
+                - pair: The trading pair (e.g., BTCUSDT, EURUSD).
+                - assetType: "crypto" or "forex".
+                - action: "BUY", "SELL", or "HOLD".
+                - entry: Entry price (look for "Entry", "Price", "Buy at", etc.).
+                - sl: Stop loss price (look for "SL", "Stop Loss", "Stop").
+                - tp1: Take profit 1 price (look for "TP1", "Target 1").
+                - tp2: Take profit 2 price (look for "TP2", "Target 2").
+                - technical_analysis: Detailed technical reasoning. Why this trade? Mention indicators, price action, or patterns seen.
+                - sentiment_analysis: Brief market sentiment based on the signal source context.
+                - confidence: A number from 0 to 100 representing the signal strength.
+                - confidence_reason: A detailed explanation of why you assigned this confidence level.
+
+                CRITICAL: If a value like SL or TP is not explicitly found, try to infer it if possible, otherwise use "Not Found". 
+                Be smart and smart - vary the confidence based on how clear the signal is.
+                Return ONLY the raw JSON object. No markdown, no backticks.`
+              }
+            ]
+          }
+        ],
+        config: {
+          responseMimeType: "application/json"
+        }
+      });
+
+      console.log("Gemini response received in frontend");
+      const text = response.text;
+      if (!text) {
+        throw new Error("AI returned an empty response.");
+      }
+      
+      setAnalysisStatus('Parsing AI results...');
+      const analysisResult = JSON.parse(text.replace(/```json|```/g, "").trim());
+      console.log("Parsed analysis result:", analysisResult);
+
+      // Step 3: Send to backend for market data and saving
+      setAnalysisStatus('Fetching market data & saving...');
+      console.log("Sending to backend for processing...");
+      const res = await axios.post('/api/process-analysis', analysisResult);
+      console.log("Backend response received:", res.data);
+      
+      const newAnalysis = {
+        id: res.data.id,
+        userId: user?.id || 'unknown',
+        ocrText: res.data.ocrText,
+        result: res.data,
+        confidence: res.data.confidence,
+        feedback: null,
+        pair: res.data.pair,
+        assetType: res.data.assetType,
+        createdAt: new Date().toISOString()
+      };
+      setCurrentAnalysis(newAnalysis);
+      setAnalyses(prev => [newAnalysis, ...prev]);
+      setAnalysisStatus('');
+    } catch (err: any) {
+      console.error('Analysis error caught in frontend:', err);
+      const errorData = err.response?.data;
+      const errorMsg = errorData?.error || err.message || 'Analysis failed';
+      const details = errorData?.details ? `\nDetails: ${errorData.details}` : '';
+      const fullError = `Error: ${errorMsg}${details}`;
+      setLastError(fullError);
+      alert(fullError);
+    } finally {
+      clearTimeout(timeoutId);
+      setAnalyzing(false);
+    }
+  };
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({ 
+    onDrop, 
+    accept: { 'image/*': [] },
+    multiple: false 
+  });
+
+  const handleFeedback = async (id: string, feedback: 'PROFIT' | 'LOSS') => {
+    try {
+      await axios.post(`/api/analyses/${id}/feedback`, { feedback });
+      setAnalyses(prev => prev.map(a => a.id === id ? { ...a, feedback } : a));
+      if (currentAnalysis?.id === id) {
+        setCurrentAnalysis(prev => prev ? { ...prev, feedback } : null);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  console.log("App Render State:", { user: user?.name, activeTab, analysesCount: analyses.length, currentAnalysis: currentAnalysis?.id, analyzing });
+
+  if (loading) return (
+    <div className="min-h-screen bg-black flex items-center justify-center">
+      <Loader2 className="w-12 h-12 animate-spin text-emerald-500" />
+    </div>
+  );
+
+  if (!user) return (
+    <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="max-w-md w-full text-center space-y-8"
+      >
+        <div className="flex justify-center">
+          <div className="w-20 h-20 bg-emerald-500 rounded-3xl flex items-center justify-center shadow-2xl shadow-emerald-500/20">
+            <TrendingUp className="text-black w-10 h-10" />
+          </div>
+        </div>
+        <div className="space-y-2">
+          <h1 className="text-5xl font-black tracking-tighter">Kagenoname<span className="text-emerald-400">Trade</span></h1>
+          <p className="text-zinc-500 font-medium">Premium AI-Powered Trading Signal Analysis</p>
+        </div>
+        <div className="flex flex-col gap-4">
+          <button 
+            onClick={handleLogin}
+            className="w-full bg-white text-black font-bold py-4 rounded-2xl flex items-center justify-center gap-3 hover:bg-zinc-200 transition-all active:scale-95 shadow-xl"
+          >
+            <img src="https://www.google.com/favicon.ico" className="w-5 h-5" alt="Google" />
+            Sign in with Google
+          </button>
+          <button 
+            onClick={async () => {
+              await axios.post('/api/auth/demo');
+              checkAuth();
+            }}
+            className="w-full bg-zinc-900 text-white border border-white/10 font-bold py-4 rounded-2xl flex items-center justify-center gap-3 hover:bg-zinc-800 transition-all active:scale-95"
+          >
+            <UserIcon className="w-5 h-5" />
+            Try Demo Mode
+          </button>
+        </div>
+        <p className="text-xs text-zinc-600">By signing in, you agree to our Terms of Service and Privacy Policy.</p>
+      </motion.div>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-black text-white selection:bg-emerald-500/30">
+      <Navbar user={user} onLogout={handleLogout} activeTab={activeTab} setActiveTab={setActiveTab} />
+      
+      <main className="max-w-7xl mx-auto px-6 pt-32 pb-20">
+        <AnimatePresence mode="wait">
+          {activeTab === 'analyze' && (
+            <motion.div 
+              key="analyze"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              className="space-y-12"
+            >
+              <div className="max-w-3xl mx-auto text-center space-y-4">
+                <h2 className="text-4xl font-black tracking-tight">Upload Signal Screenshot</h2>
+                <p className="text-zinc-400">Upload a screenshot of your trading signal (Telegram, WhatsApp, etc.) and let our AI analyze the market for you.</p>
+              </div>
+
+              <div {...getRootProps()} className={cn(
+                "max-w-3xl mx-auto border-2 border-dashed rounded-[40px] p-16 flex flex-col items-center justify-center gap-6 transition-all",
+                isDragActive ? "border-emerald-500 bg-emerald-500/5" : "border-white/10 hover:border-white/20 bg-white/5",
+                analyzing ? "opacity-50 cursor-not-allowed pointer-events-none" : "cursor-pointer"
+              )}>
+                <input {...getInputProps()} disabled={analyzing} />
+                <div className="w-20 h-20 bg-emerald-500/10 rounded-3xl flex items-center justify-center">
+                  {analyzing ? (
+                    <Loader2 className="w-10 h-10 text-emerald-400 animate-spin" />
+                  ) : (
+                    <Upload className="w-10 h-10 text-emerald-400" />
+                  )}
+                </div>
+                <div className="text-center">
+                  <p className="text-xl font-bold text-white">
+                    {analyzing ? (analysisStatus || "Analyzing Signal...") : "Drop your screenshot here"}
+                  </p>
+                  <p className="text-zinc-500 mt-1">
+                    {analyzing ? "Please wait while we process the market data" : "or click to browse files (JPG, PNG)"}
+                  </p>
+                  {analyzing && (
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setAnalyzing(false);
+                        setAnalysisStatus('');
+                        setLastError('Analysis cancelled by user.');
+                      }}
+                      className="mt-4 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-xl text-xs font-bold transition-all"
+                    >
+                      Cancel Analysis
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {lastError && (
+                <div className="max-w-3xl mx-auto bg-red-500/10 border border-red-500/20 rounded-2xl p-4 flex items-center justify-between gap-3 text-red-400">
+                  <div className="flex items-center gap-3">
+                    <AlertCircle className="w-5 h-5 shrink-0" />
+                    <p className="text-sm font-medium">{lastError}</p>
+                  </div>
+                  <button 
+                    onClick={() => setLastError(null)}
+                    className="px-3 py-1 bg-red-500/20 hover:bg-red-500/30 rounded-lg text-xs font-bold transition-all"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              )}
+
+              {currentAnalysis && (
+                <div className="space-y-8">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-2xl font-bold text-white">Analysis Result</h3>
+                    <button onClick={() => setCurrentAnalysis(null)} className="text-sm text-zinc-500 hover:text-white transition-colors">Clear</button>
+                  </div>
+                  <AnalysisCard analysis={currentAnalysis} onFeedback={handleFeedback} />
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {activeTab === 'history' && (
+            <motion.div 
+              key="history"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              className="space-y-8"
+            >
+              <div className="flex items-center justify-between">
+                <h2 className="text-3xl font-black tracking-tight">Analysis History</h2>
+                <span className="text-sm text-zinc-500 font-medium">{analyses.length} total analyses</span>
+              </div>
+              <div className="grid gap-8">
+                {analyses.map(a => (
+                  <AnalysisCard key={a.id} analysis={a} onFeedback={handleFeedback} />
+                ))}
+                {analyses.length === 0 && (
+                  <div className="py-20 text-center space-y-4">
+                    <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mx-auto">
+                      <History className="w-8 h-8 text-zinc-600" />
+                    </div>
+                    <p className="text-zinc-500">No history yet. Start by analyzing a signal!</p>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+
+          {activeTab === 'admin' && user.role === 'ADMIN' && (
+            <motion.div 
+              key="admin"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+            >
+              <AdminDashboard />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </main>
+    </div>
+  );
+}
